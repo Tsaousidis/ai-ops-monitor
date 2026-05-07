@@ -10,6 +10,10 @@ from app.monitoring.health_checker import (
     check_service_health,
 )
 
+from app.services.incident_service import (
+    create_incident,
+)
+
 
 async def monitor_all_services(
     db: AsyncSession,
@@ -39,8 +43,20 @@ async def monitor_all_services(
 
         if health_result["success"]:
             service.status = "healthy"
+
         else:
             service.status = "offline"
+
+            await create_incident(
+                db=db,
+                service_id=service.id,
+                severity="critical",
+                title=f"{service.name} is offline",
+                description=(
+                    f"Health check failed for "
+                    f"{service.base_url}"
+                ),
+            )
 
         monitoring_results.append({
             "service": service.name,
