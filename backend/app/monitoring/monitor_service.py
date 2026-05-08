@@ -73,7 +73,7 @@ async def monitor_all_services(
         else:
             service.status = "offline"
 
-            await create_incident(
+            incident = await create_incident(
                 db=db,
                 service_id=service.id,
                 severity="critical",
@@ -84,7 +84,19 @@ async def monitor_all_services(
                 ),
             )
 
+            await manager.broadcast({
+                "event": "incident_update",
+                "data": {
+                    "id": incident.id,
+                    "service_id": service.id,
+                    "severity": incident.severity,
+                    "title": incident.title,
+                    "status": incident.status,
+                },
+            })
+
         monitoring_results.append({
+            "service_id": service.id,
             "service": service.name,
             "status": service.status,
             "response_time": health_result["response_time"],
@@ -93,6 +105,7 @@ async def monitor_all_services(
         await manager.broadcast({
             "event": "service_update",
             "data": {
+                "service_id": service.id,
                 "service": service.name,
                 "status": service.status,
                 "response_time": health_result[

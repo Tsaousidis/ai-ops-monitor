@@ -18,8 +18,38 @@ export type Incident = {
   resolved_at: string | null;
 };
 
+export type Metric = {
+  id: number;
+  service_id: number;
+  metric_type: "response_time" | "availability" | string;
+  value: number;
+  timestamp: string;
+};
+
 export type MonitoringResult = {
+  service_id: number;
   service: string;
   status: string;
   response_time: number;
 };
+
+export type WebSocketEvent =
+  | {
+      event: "service_update";
+      data: {
+        service_id: number;
+        service: string;
+        status: string;
+        response_time: number;
+      };
+    }
+  | {
+      event: "incident_update";
+      data: {
+        id: number;
+        service_id: number;
+        severity: string;
+        title: string;
+        status: string;
+      };
+    };
