@@ -1,5 +1,6 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.db.models import (
     HealthCheck,
@@ -8,6 +9,10 @@ from app.db.models import (
 
 from app.monitoring.health_checker import (
     check_service_health,
+)
+
+from app.services.alert_rule_service import (
+    get_or_create_alert_rule_for_service,
 )
 
 from app.services.incident_service import (
@@ -32,7 +37,9 @@ async def monitor_all_services(
     db: AsyncSession,
 ):
     result = await db.execute(
-        select(Service)
+        select(Service).options(
+            selectinload(Service.alert_rule)
+        )
     )
 
     services = result.scalars().all()
@@ -44,6 +51,13 @@ async def monitor_all_services(
 
         health_result = await check_service_health(
             service.base_url
+        )
+        alert_rule = (
+            service.alert_rule
+            or await get_or_create_alert_rule_for_service(
+                db,
+                service.id,
+            )
         )
 
         health_check = HealthCheck(
@@ -74,13 +88,58 @@ async def monitor_all_services(
         )
 
         if health_result["success"]:
-            service.status = "healthy"
-            resolved_incidents = (
-                await resolve_open_incidents_for_service(
-                    db,
-                    service.id,
+            if (
+                alert_rule.enabled
+                and health_result["response_time"]
+                >= alert_rule.critical_response_time_ms
+            ):
+                service.status = "critical"
+
+                incident = await create_incident(
+                    db=db,
+                    service_id=service.id,
+                    severity="critical",
+                    title=(
+                        f"{service.name} latency is critical"
+                    ),
+                    description=(
+                        f"Response time "
+                        f"{health_result['response_time']}ms "
+                        f"exceeded critical threshold "
+                        f"{alert_rule.critical_response_time_ms}ms"
+                    ),
                 )
-            )
+
+                await manager.broadcast({
+                    "event": "incident_update",
+                    "data": {
+                        "id": incident.id,
+                        "service_id": service.id,
+                        "severity": incident.severity,
+                        "title": incident.title,
+                        "status": incident.status,
+                    },
+                })
+
+            elif (
+                alert_rule.enabled
+                and health_result["response_time"]
+                >= alert_rule.warning_response_time_ms
+            ):
+                service.status = "warning"
+
+            else:
+                service.status = "healthy"
+
+            resolved_incidents = []
+
+            if service.status == "healthy":
+                resolved_incidents = (
+                    await resolve_open_incidents_for_service(
+                        db,
+                        service.id,
+                    )
+                )
 
             if resolved_incidents:
                 await create_log(
@@ -132,7 +191,12 @@ async def monitor_all_services(
 
         log_level = (
             "error"
-            if not health_result["success"]
+            if (
+                not health_result["success"]
+                or service.status == "critical"
+            )
+            else "warning"
+            if service.status == "warning"
             else "info"
         )
         log_message = (

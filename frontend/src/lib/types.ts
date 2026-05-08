@@ -26,6 +26,16 @@ export type AIInsight = {
   created_at: string;
 };
 
+export type AlertRule = {
+  id: number;
+  service_id: number;
+  warning_response_time_ms: number;
+  critical_response_time_ms: number;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Metric = {
   id: number;
   service_id: number;

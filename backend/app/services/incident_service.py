@@ -86,3 +86,43 @@ async def resolve_open_incidents_for_service(
         incident.resolved_at = datetime.utcnow()
 
     return incidents
+
+
+async def resolve_incident(
+    db: AsyncSession,
+    incident: Incident,
+):
+    incident.status = "resolved"
+    incident.resolved_at = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(incident)
+
+    return incident
+
+
+async def reopen_incident(
+    db: AsyncSession,
+    incident: Incident,
+):
+    incident.status = "open"
+    incident.resolved_at = None
+
+    await db.commit()
+    await db.refresh(incident)
+
+    return incident
+
+
+async def escalate_incident(
+    db: AsyncSession,
+    incident: Incident,
+):
+    incident.severity = "critical"
+    incident.status = "open"
+    incident.resolved_at = None
+
+    await db.commit()
+    await db.refresh(incident)
+
+    return incident

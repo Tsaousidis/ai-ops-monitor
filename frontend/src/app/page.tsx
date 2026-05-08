@@ -13,16 +13,22 @@ import {
 
 import { getWebSocketUrl } from "@/src/lib/api";
 import {
+  escalateIncident,
   fetchIncidents,
   fetchIncidentInsights,
   fetchLogs,
+  fetchServiceAlertRule,
   fetchServiceMetrics,
   fetchServices,
   generateIncidentInsight,
+  reopenIncident,
+  resolveIncident,
   runMonitoringCheck,
+  updateServiceAlertRule,
 } from "@/src/lib/services";
 import type {
   AIInsight,
+  AlertRule,
   Incident,
   LogEntry,
   Metric,
@@ -118,13 +124,23 @@ export default function HomePage() {
   >({});
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [metrics, setMetrics] = useState<Metric[]>([]);
+  const [alertRule, setAlertRule] = useState<AlertRule | null>(
+    null,
+  );
+  const [warningThreshold, setWarningThreshold] = useState("500");
+  const [criticalThreshold, setCriticalThreshold] = useState("1000");
+  const [alertsEnabled, setAlertsEnabled] = useState(true);
   const [selectedServiceId, setSelectedServiceId] = useState<
     number | null
   >(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMetricsLoading, setIsMetricsLoading] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
+  const [isSavingAlertRule, setIsSavingAlertRule] = useState(false);
   const [generatingInsightId, setGeneratingInsightId] = useState<
+    number | null
+  >(null);
+  const [incidentActionId, setIncidentActionId] = useState<
     number | null
   >(null);
   const [error, setError] = useState<string | null>(null);
@@ -238,6 +254,15 @@ export default function HomePage() {
     }
   }, []);
 
+  const loadAlertRule = useCallback(async (serviceId: number) => {
+    const rule = await fetchServiceAlertRule(serviceId);
+
+    setAlertRule(rule);
+    setWarningThreshold(String(rule.warning_response_time_ms));
+    setCriticalThreshold(String(rule.critical_response_time_ms));
+    setAlertsEnabled(rule.enabled);
+  }, []);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadDashboardData();
@@ -251,7 +276,8 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadMetrics(activeServiceId);
     void loadLogs(activeServiceId);
-  }, [activeServiceId, loadLogs, loadMetrics]);
+    void loadAlertRule(activeServiceId);
+  }, [activeServiceId, loadAlertRule, loadLogs, loadMetrics]);
 
   useEffect(() => {
     const socket = new WebSocket(getWebSocketUrl());
@@ -366,6 +392,72 @@ export default function HomePage() {
       );
     } finally {
       setGeneratingInsightId(null);
+    }
+  }
+
+  async function handleSaveAlertRule() {
+    if (!activeServiceId) {
+      return;
+    }
+
+    setIsSavingAlertRule(true);
+    setError(null);
+
+    try {
+      const updatedRule = await updateServiceAlertRule(
+        activeServiceId,
+        {
+          warning_response_time_ms: Number(warningThreshold),
+          critical_response_time_ms: Number(criticalThreshold),
+          enabled: alertsEnabled,
+        },
+      );
+
+      setAlertRule(updatedRule);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to save alert rule",
+      );
+    } finally {
+      setIsSavingAlertRule(false);
+    }
+  }
+
+  async function handleIncidentAction(
+    incidentId: number,
+    action: "resolve" | "reopen" | "escalate",
+  ) {
+    setIncidentActionId(incidentId);
+    setError(null);
+
+    try {
+      if (action === "resolve") {
+        await resolveIncident(incidentId);
+      }
+
+      if (action === "reopen") {
+        await reopenIncident(incidentId);
+      }
+
+      if (action === "escalate") {
+        await escalateIncident(incidentId);
+      }
+
+      await loadDashboardData();
+
+      if (activeServiceId) {
+        await loadLogs(activeServiceId);
+      }
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to update incident",
+      );
+    } finally {
+      setIncidentActionId(null);
     }
   }
 
@@ -627,6 +719,71 @@ export default function HomePage() {
         </section>
 
         <section>
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold">Alert rules</h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              {activeService
+                ? activeService.name
+                : "Select a service"}
+            </p>
+          </div>
+
+          <div className="grid gap-4 rounded-lg border border-zinc-800 bg-zinc-900 p-5 md:grid-cols-[1fr_1fr_auto] md:items-end">
+            <label className="text-sm text-zinc-300">
+              Warning latency
+              <input
+                className="mt-2 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100"
+                min="1"
+                onChange={(event) =>
+                  setWarningThreshold(event.target.value)
+                }
+                type="number"
+                value={warningThreshold}
+              />
+            </label>
+
+            <label className="text-sm text-zinc-300">
+              Critical latency
+              <input
+                className="mt-2 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100"
+                min="1"
+                onChange={(event) =>
+                  setCriticalThreshold(event.target.value)
+                }
+                type="number"
+                value={criticalThreshold}
+              />
+            </label>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-sm text-zinc-300">
+                <input
+                  checked={alertsEnabled}
+                  onChange={(event) =>
+                    setAlertsEnabled(event.target.checked)
+                  }
+                  type="checkbox"
+                />
+                Enabled
+              </label>
+
+              <button
+                className="rounded-md border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={
+                  !activeServiceId ||
+                  !alertRule ||
+                  isSavingAlertRule
+                }
+                onClick={handleSaveAlertRule}
+                type="button"
+              >
+                {isSavingAlertRule ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section>
           <div className="mb-4 flex flex-col gap-1">
             <h2 className="text-xl font-semibold">Live logs</h2>
             <p className="text-sm text-zinc-500">
@@ -720,6 +877,60 @@ export default function HomePage() {
                         : "Generate AI insight"}
                     </button>
                   )}
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {incident.status === "open" ? (
+                      <button
+                        className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-100 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={
+                          incidentActionId === incident.id
+                        }
+                        onClick={() =>
+                          handleIncidentAction(
+                            incident.id,
+                            "resolve",
+                          )
+                        }
+                        type="button"
+                      >
+                        Resolve
+                      </button>
+                    ) : (
+                      <button
+                        className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={
+                          incidentActionId === incident.id
+                        }
+                        onClick={() =>
+                          handleIncidentAction(
+                            incident.id,
+                            "reopen",
+                          )
+                        }
+                        type="button"
+                      >
+                        Reopen
+                      </button>
+                    )}
+
+                    {incident.severity !== "critical" ? (
+                      <button
+                        className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={
+                          incidentActionId === incident.id
+                        }
+                        onClick={() =>
+                          handleIncidentAction(
+                            incident.id,
+                            "escalate",
+                          )
+                        }
+                        type="button"
+                      >
+                        Escalate
+                      </button>
+                    ) : null}
+                  </div>
                 </article>
               ))
             ) : (

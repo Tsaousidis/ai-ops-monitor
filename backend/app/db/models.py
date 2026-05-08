@@ -54,6 +54,12 @@ class Service(Base, TimestampMixin):
         back_populates="service",
     )
 
+    alert_rule = relationship(
+        "AlertRule",
+        back_populates="service",
+        uselist=False,
+    )
+
 
 class Metric(Base):
     __tablename__ = "metrics"
@@ -241,4 +247,39 @@ class HealthCheck(Base):
     service = relationship(
         "Service",
         back_populates="health_checks",
+    )
+
+
+class AlertRule(Base, TimestampMixin):
+    __tablename__ = "alert_rules"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+    )
+
+    service_id: Mapped[int] = mapped_column(
+        ForeignKey("services.id"),
+        unique=True,
+        index=True,
+    )
+
+    warning_response_time_ms: Mapped[float] = mapped_column(
+        Float,
+        default=500.0,
+    )
+
+    critical_response_time_ms: Mapped[float] = mapped_column(
+        Float,
+        default=1000.0,
+    )
+
+    enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+    )
+
+    service = relationship(
+        "Service",
+        back_populates="alert_rule",
     )

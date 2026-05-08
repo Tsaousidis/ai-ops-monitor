@@ -1,6 +1,7 @@
 import { apiRequest } from "./api";
 import type {
   AIInsight,
+  AlertRule,
   Incident,
   LogEntry,
   Metric,
@@ -31,8 +32,59 @@ export async function generateIncidentInsight(incidentId: number) {
   );
 }
 
+export async function resolveIncident(incidentId: number) {
+  return apiRequest<Incident>(
+    `/incidents/${incidentId}/resolve`,
+    {
+      method: "POST",
+    },
+  );
+}
+
+export async function reopenIncident(incidentId: number) {
+  return apiRequest<Incident>(
+    `/incidents/${incidentId}/reopen`,
+    {
+      method: "POST",
+    },
+  );
+}
+
+export async function escalateIncident(incidentId: number) {
+  return apiRequest<Incident>(
+    `/incidents/${incidentId}/escalate`,
+    {
+      method: "POST",
+    },
+  );
+}
+
 export async function fetchServiceMetrics(serviceId: number) {
   return apiRequest<Metric[]>(`/metrics/service/${serviceId}`);
+}
+
+export async function fetchServiceAlertRule(serviceId: number) {
+  return apiRequest<AlertRule>(
+    `/alert-rules/service/${serviceId}`,
+  );
+}
+
+export async function updateServiceAlertRule(
+  serviceId: number,
+  alertRule: Pick<
+    AlertRule,
+    | "warning_response_time_ms"
+    | "critical_response_time_ms"
+    | "enabled"
+  >,
+) {
+  return apiRequest<AlertRule>(
+    `/alert-rules/service/${serviceId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(alertRule),
+    },
+  );
 }
 
 export async function fetchLogs(serviceId?: number) {
