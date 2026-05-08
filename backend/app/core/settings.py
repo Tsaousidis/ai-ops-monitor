@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = "gemini-2.5-flash"
     CELERY_BROKER_URL: str | None = None
     CELERY_RESULT_BACKEND: str | None = None
+    MONITORING_INTERVAL_SECONDS: int = 60
     CORS_ORIGINS: str = (
         "http://localhost:3000,"
         "http://127.0.0.1:3000"

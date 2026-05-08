@@ -12,6 +12,11 @@ from app.monitoring.health_checker import (
 
 from app.services.incident_service import (
     create_incident,
+    resolve_open_incidents_for_service,
+)
+
+from app.services.log_service import (
+    create_log,
 )
 
 from app.services.metric_service import (
@@ -35,6 +40,7 @@ async def monitor_all_services(
     monitoring_results = []
 
     for service in services:
+        previous_status = service.status
 
         health_result = await check_service_health(
             service.base_url
@@ -69,6 +75,35 @@ async def monitor_all_services(
 
         if health_result["success"]:
             service.status = "healthy"
+            resolved_incidents = (
+                await resolve_open_incidents_for_service(
+                    db,
+                    service.id,
+                )
+            )
+
+            if resolved_incidents:
+                await create_log(
+                    db=db,
+                    service_id=service.id,
+                    level="info",
+                    message=(
+                        f"{service.name} recovered; "
+                        f"{len(resolved_incidents)} incident(s) resolved"
+                    ),
+                )
+
+                for incident in resolved_incidents:
+                    await manager.broadcast({
+                        "event": "incident_update",
+                        "data": {
+                            "id": incident.id,
+                            "service_id": service.id,
+                            "severity": incident.severity,
+                            "title": incident.title,
+                            "status": incident.status,
+                        },
+                    })
 
         else:
             service.status = "offline"
@@ -95,6 +130,30 @@ async def monitor_all_services(
                 },
             })
 
+        log_level = (
+            "error"
+            if not health_result["success"]
+            else "info"
+        )
+        log_message = (
+            f"Health check for {service.name} returned "
+            f"{health_result['status_code']} in "
+            f"{health_result['response_time']}ms"
+        )
+
+        if previous_status != service.status:
+            log_message = (
+                f"{service.name} changed from {previous_status} "
+                f"to {service.status}. {log_message}"
+            )
+
+        log = await create_log(
+            db=db,
+            service_id=service.id,
+            level=log_level,
+            message=log_message,
+        )
+
         monitoring_results.append({
             "service_id": service.id,
             "service": service.name,
@@ -111,6 +170,17 @@ async def monitor_all_services(
                 "response_time": health_result[
                     "response_time"
                 ],
+            },
+        })
+
+        await manager.broadcast({
+            "event": "log_update",
+            "data": {
+                "id": log.id,
+                "service_id": service.id,
+                "level": log.level,
+                "message": log.message,
+                "timestamp": log.timestamp.isoformat(),
             },
         })
 

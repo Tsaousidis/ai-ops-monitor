@@ -15,6 +15,7 @@ import { getWebSocketUrl } from "@/src/lib/api";
 import {
   fetchIncidents,
   fetchIncidentInsights,
+  fetchLogs,
   fetchServiceMetrics,
   fetchServices,
   generateIncidentInsight,
@@ -23,6 +24,7 @@ import {
 import type {
   AIInsight,
   Incident,
+  LogEntry,
   Metric,
   Service,
   WebSocketEvent,
@@ -67,6 +69,28 @@ function formatMetricTime(timestamp: string) {
   });
 }
 
+function formatLogTime(timestamp: string) {
+  return new Date(timestamp).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+function getLogLevelClass(level: string) {
+  const normalizedLevel = level.toLowerCase();
+
+  if (normalizedLevel === "error") {
+    return "border-red-500/30 bg-red-500/10 text-red-100";
+  }
+
+  if (normalizedLevel === "warning") {
+    return "border-amber-500/30 bg-amber-500/10 text-amber-100";
+  }
+
+  return "border-zinc-800 bg-zinc-900 text-zinc-200";
+}
+
 function buildMetricSeries(
   metrics: Metric[],
   metricType: string,
@@ -92,6 +116,7 @@ export default function HomePage() {
   const [insights, setInsights] = useState<
     Record<number, AIInsight[]>
   >({});
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const [selectedServiceId, setSelectedServiceId] = useState<
     number | null
@@ -203,6 +228,16 @@ export default function HomePage() {
     }
   }, []);
 
+  const loadLogs = useCallback(async (serviceId?: number) => {
+    try {
+      const logsData = await fetchLogs(serviceId);
+
+      setLogs(logsData);
+    } catch {
+      setLogs([]);
+    }
+  }, []);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadDashboardData();
@@ -215,7 +250,8 @@ export default function HomePage() {
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadMetrics(activeServiceId);
-  }, [activeServiceId, loadMetrics]);
+    void loadLogs(activeServiceId);
+  }, [activeServiceId, loadLogs, loadMetrics]);
 
   useEffect(() => {
     const socket = new WebSocket(getWebSocketUrl());
@@ -261,6 +297,26 @@ export default function HomePage() {
       if (socketEvent.event === "incident_update") {
         void loadDashboardData();
       }
+
+      if (socketEvent.event === "log_update") {
+        if (
+          activeServiceId &&
+          socketEvent.data.service_id !== activeServiceId
+        ) {
+          return;
+        }
+
+        setLogs((currentLogs) => {
+          const nextLogs = [
+            socketEvent.data,
+            ...currentLogs.filter(
+              (log) => log.id !== socketEvent.data.id,
+            ),
+          ];
+
+          return nextLogs.slice(0, 50);
+        });
+      }
     };
 
     return () => {
@@ -278,6 +334,7 @@ export default function HomePage() {
 
       if (activeServiceId) {
         await loadMetrics(activeServiceId);
+        await loadLogs(activeServiceId);
       }
     } catch (requestError) {
       setError(
@@ -566,6 +623,40 @@ export default function HomePage() {
                 )}
               </div>
             </div>
+          </div>
+        </section>
+
+        <section>
+          <div className="mb-4 flex flex-col gap-1">
+            <h2 className="text-xl font-semibold">Live logs</h2>
+            <p className="text-sm text-zinc-500">
+              {activeService
+                ? activeService.name
+                : "Select a service"}
+            </p>
+          </div>
+
+          <div className="max-h-96 overflow-auto rounded-lg border border-zinc-800 bg-zinc-950">
+            {logs.length > 0 ? (
+              logs.map((log) => (
+                <div
+                  className={`border-b p-4 text-sm last:border-b-0 ${getLogLevelClass(log.level)}`}
+                  key={log.id}
+                >
+                  <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                    <p className="leading-6">{log.message}</p>
+                    <div className="flex shrink-0 gap-2 text-xs opacity-75">
+                      <span>{log.level}</span>
+                      <span>{formatLogTime(log.timestamp)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="p-5 text-sm text-zinc-500">
+                No logs streamed yet.
+              </div>
+            )}
           </div>
         </section>
 

@@ -34,6 +34,14 @@ export type Metric = {
   timestamp: string;
 };
 
+export type LogEntry = {
+  id: number;
+  service_id: number;
+  level: string;
+  message: string;
+  timestamp: string;
+};
+
 export type MonitoringResult = {
   service_id: number;
   service: string;
@@ -60,4 +68,8 @@ export type WebSocketEvent =
         title: string;
         status: string;
       };
+    }
+  | {
+      event: "log_update";
+      data: LogEntry;
     };

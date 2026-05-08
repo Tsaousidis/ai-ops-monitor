@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -65,3 +67,22 @@ async def get_incident_by_id(
     )
 
     return result.scalar_one_or_none()
+
+
+async def resolve_open_incidents_for_service(
+    db: AsyncSession,
+    service_id: int,
+):
+    result = await db.execute(
+        select(Incident).where(
+            Incident.service_id == service_id,
+            Incident.status == "open",
+        )
+    )
+    incidents = result.scalars().all()
+
+    for incident in incidents:
+        incident.status = "resolved"
+        incident.resolved_at = datetime.utcnow()
+
+    return incidents

@@ -15,4 +15,10 @@ celery_app.conf.update(
     accept_content=["json"],
     timezone="UTC",
     enable_utc=True,
+    beat_schedule={
+        "monitor-services-periodically": {
+            "task": "monitoring.check_services",
+            "schedule": settings.MONITORING_INTERVAL_SECONDS,
+        },
+    },
 )

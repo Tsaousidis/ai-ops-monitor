@@ -2,6 +2,7 @@ import { apiRequest } from "./api";
 import type {
   AIInsight,
   Incident,
+  LogEntry,
   Metric,
   MonitoringResult,
   Service,
@@ -32,6 +33,20 @@ export async function generateIncidentInsight(incidentId: number) {
 
 export async function fetchServiceMetrics(serviceId: number) {
   return apiRequest<Metric[]>(`/metrics/service/${serviceId}`);
+}
+
+export async function fetchLogs(serviceId?: number) {
+  const searchParams = new URLSearchParams({
+    limit: "50",
+  });
+
+  if (serviceId) {
+    searchParams.set("service_id", String(serviceId));
+  }
+
+  return apiRequest<LogEntry[]>(
+    `/logs/?${searchParams.toString()}`,
+  );
 }
 
 export async function runMonitoringCheck() {
