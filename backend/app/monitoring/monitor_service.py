@@ -14,6 +14,10 @@ from app.services.incident_service import (
     create_incident,
 )
 
+from app.services.metric_service import (
+    create_metric,
+)
+
 
 async def monitor_all_services(
     db: AsyncSession,
@@ -40,6 +44,24 @@ async def monitor_all_services(
         )
 
         db.add(health_check)
+
+        await create_metric(
+            db=db,
+            service_id=service.id,
+            metric_type="response_time",
+            value=health_result["response_time"],
+        )
+
+        availability_value = (
+            1.0 if health_result["success"] else 0.0
+        )
+
+        await create_metric(
+            db=db,
+            service_id=service.id,
+            metric_type="availability",
+            value=availability_value,
+        )
 
         if health_result["success"]:
             service.status = "healthy"
