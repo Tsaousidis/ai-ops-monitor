@@ -1,7 +1,23 @@
-import api from "./api";
+import { apiRequest } from "./api";
+import type {
+  Incident,
+  MonitoringResult,
+  Service,
+} from "./types";
 
 export async function fetchServices() {
-  const response = await api.get("/services");
+  return apiRequest<Service[]>("/services/");
+}
 
-  return response.data;
+export async function fetchIncidents() {
+  return apiRequest<Incident[]>("/incidents/");
+}
+
+export async function runMonitoringCheck() {
+  return apiRequest<MonitoringResult[]>(
+    "/monitoring/check-services",
+    {
+      method: "POST",
+    },
+  );
 }
