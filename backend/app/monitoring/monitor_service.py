@@ -18,6 +18,10 @@ from app.services.metric_service import (
     create_metric,
 )
 
+from app.websocket.websocket_manager import (
+    manager,
+)
+
 
 async def monitor_all_services(
     db: AsyncSession,
@@ -84,6 +88,17 @@ async def monitor_all_services(
             "service": service.name,
             "status": service.status,
             "response_time": health_result["response_time"],
+        })
+
+        await manager.broadcast({
+            "event": "service_update",
+            "data": {
+                "service": service.name,
+                "status": service.status,
+                "response_time": health_result[
+                    "response_time"
+                ],
+            },
         })
 
     await db.commit()
