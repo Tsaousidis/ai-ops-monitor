@@ -18,6 +18,14 @@ export type Incident = {
   resolved_at: string | null;
 };
 
+export type AIInsight = {
+  id: number;
+  incident_id: number;
+  summary: string;
+  root_cause: string;
+  created_at: string;
+};
+
 export type Metric = {
   id: number;
   service_id: number;

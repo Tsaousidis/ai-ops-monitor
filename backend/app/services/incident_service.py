@@ -52,3 +52,16 @@ async def get_all_incidents(
     )
 
     return result.scalars().all()
+
+
+async def get_incident_by_id(
+    db: AsyncSession,
+    incident_id: int,
+):
+    result = await db.execute(
+        select(Incident).where(
+            Incident.id == incident_id
+        )
+    )
+
+    return result.scalar_one_or_none()

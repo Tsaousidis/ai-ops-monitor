@@ -14,11 +14,14 @@ import {
 import { getWebSocketUrl } from "@/src/lib/api";
 import {
   fetchIncidents,
+  fetchIncidentInsights,
   fetchServiceMetrics,
   fetchServices,
+  generateIncidentInsight,
   runMonitoringCheck,
 } from "@/src/lib/services";
 import type {
+  AIInsight,
   Incident,
   Metric,
   Service,
@@ -86,6 +89,9 @@ function buildMetricSeries(
 export default function HomePage() {
   const [services, setServices] = useState<Service[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [insights, setInsights] = useState<
+    Record<number, AIInsight[]>
+  >({});
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const [selectedServiceId, setSelectedServiceId] = useState<
     number | null
@@ -93,6 +99,9 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isMetricsLoading, setIsMetricsLoading] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
+  const [generatingInsightId, setGeneratingInsightId] = useState<
+    number | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
   const [metricsError, setMetricsError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -151,6 +160,18 @@ export default function HomePage() {
 
       setServices(servicesData);
       setIncidents(incidentsData);
+
+      const insightsEntries = await Promise.all(
+        incidentsData.map(async (incident) => {
+          const incidentInsights = await fetchIncidentInsights(
+            incident.id,
+          );
+
+          return [incident.id, incidentInsights] as const;
+        }),
+      );
+
+      setInsights(Object.fromEntries(insightsEntries));
       setLastUpdated(new Date());
     } catch (requestError) {
       setError(
@@ -266,6 +287,28 @@ export default function HomePage() {
       );
     } finally {
       setIsChecking(false);
+    }
+  }
+
+  async function handleGenerateInsight(incidentId: number) {
+    setGeneratingInsightId(incidentId);
+    setError(null);
+
+    try {
+      const insight = await generateIncidentInsight(incidentId);
+
+      setInsights((currentInsights) => ({
+        ...currentInsights,
+        [incidentId]: [insight],
+      }));
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to generate AI insight",
+      );
+    } finally {
+      setGeneratingInsightId(null);
     }
   }
 
@@ -559,6 +602,33 @@ export default function HomePage() {
                       </span>
                     </div>
                   </div>
+
+                  {insights[incident.id]?.[0] ? (
+                    <div className="mt-4 rounded-md border border-cyan-500/20 bg-cyan-500/10 p-4 text-sm text-cyan-50">
+                      <p className="font-medium">AI insight</p>
+                      <p className="mt-2 opacity-85">
+                        {insights[incident.id][0].summary}
+                      </p>
+                      <p className="mt-2 text-cyan-100/75">
+                        {insights[incident.id][0].root_cause}
+                      </p>
+                    </div>
+                  ) : (
+                    <button
+                      className="mt-4 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={
+                        generatingInsightId === incident.id
+                      }
+                      onClick={() =>
+                        handleGenerateInsight(incident.id)
+                      }
+                      type="button"
+                    >
+                      {generatingInsightId === incident.id
+                        ? "Generating insight..."
+                        : "Generate AI insight"}
+                    </button>
+                  )}
                 </article>
               ))
             ) : (

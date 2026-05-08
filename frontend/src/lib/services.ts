@@ -1,5 +1,6 @@
 import { apiRequest } from "./api";
 import type {
+  AIInsight,
   Incident,
   Metric,
   MonitoringResult,
@@ -12,6 +13,21 @@ export async function fetchServices() {
 
 export async function fetchIncidents() {
   return apiRequest<Incident[]>("/incidents/");
+}
+
+export async function fetchIncidentInsights(incidentId: number) {
+  return apiRequest<AIInsight[]>(
+    `/incidents/${incidentId}/ai-insights`,
+  );
+}
+
+export async function generateIncidentInsight(incidentId: number) {
+  return apiRequest<AIInsight>(
+    `/incidents/${incidentId}/ai-insights`,
+    {
+      method: "POST",
+    },
+  );
 }
 
 export async function fetchServiceMetrics(serviceId: number) {
