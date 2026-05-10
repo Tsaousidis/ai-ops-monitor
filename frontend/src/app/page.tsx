@@ -1,6 +1,6 @@
 "use client";
 
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
@@ -104,6 +104,63 @@ function getLogLevelClass(level: string) {
   }
 
   return "border-zinc-800 bg-zinc-900 text-zinc-200";
+}
+
+function SkeletonBlock({
+  className = "",
+}: {
+  className?: string;
+}) {
+  return (
+    <div
+      className={`animate-pulse rounded-md bg-zinc-800/80 ${className}`}
+    />
+  );
+}
+
+function Panel({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`rounded-lg border border-zinc-800 bg-zinc-900/90 shadow-sm shadow-black/20 ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function EmptyState({
+  title,
+  detail,
+}: {
+  title: string;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-lg border border-dashed border-zinc-800 bg-zinc-950/60 p-6">
+      <p className="font-medium text-zinc-200">{title}</p>
+      <p className="mt-1 text-sm text-zinc-500">{detail}</p>
+    </div>
+  );
+}
+
+function MetricSkeleton() {
+  return (
+    <div className="flex h-full flex-col justify-end gap-3">
+      <SkeletonBlock className="h-5 w-32" />
+      <SkeletonBlock className="h-40 w-full" />
+      <div className="flex justify-between">
+        <SkeletonBlock className="h-3 w-14" />
+        <SkeletonBlock className="h-3 w-14" />
+        <SkeletonBlock className="h-3 w-14" />
+      </div>
+    </div>
+  );
 }
 
 function buildMetricSeries(
@@ -356,9 +413,13 @@ export default function HomePage() {
     };
 
     socket.onmessage = (message) => {
-      const socketEvent = JSON.parse(
-        message.data,
-      ) as WebSocketEvent;
+      let socketEvent: WebSocketEvent;
+
+      try {
+        socketEvent = JSON.parse(message.data) as WebSocketEvent;
+      } catch {
+        return;
+      }
 
       if (socketEvent.event === "service_update") {
         setServices((currentServices) =>
@@ -571,23 +632,27 @@ export default function HomePage() {
 
   if (!authChecked) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-zinc-950 text-white">
-        <p className="text-sm text-zinc-400">Checking session...</p>
+      <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-6 text-white">
+        <Panel className="w-full max-w-sm p-6">
+          <SkeletonBlock className="h-7 w-44" />
+          <SkeletonBlock className="mt-4 h-4 w-56" />
+          <SkeletonBlock className="mt-8 h-10 w-full" />
+        </Panel>
       </main>
     );
   }
 
   if (!authToken) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-6 text-white">
+      <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-6 py-10 text-white">
         <form
-          className="w-full max-w-sm rounded-lg border border-zinc-800 bg-zinc-900 p-6"
+          className="w-full max-w-sm rounded-lg border border-zinc-800 bg-zinc-900/95 p-6 shadow-xl shadow-black/30"
           onSubmit={handleLogin}
         >
           <div>
             <h1 className="text-2xl font-semibold">AI Ops Monitor</h1>
             <p className="mt-1 text-sm text-zinc-400">
-              Admin access required
+              Admin access required for the operations dashboard
             </p>
           </div>
 
@@ -601,7 +666,7 @@ export default function HomePage() {
             Username
             <input
               autoComplete="username"
-              className="mt-2 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100"
+              className="mt-2 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100 outline-none transition focus:border-cyan-500/70"
               onChange={(event) =>
                 setLoginUsername(event.target.value)
               }
@@ -613,7 +678,7 @@ export default function HomePage() {
             Password
             <input
               autoComplete="current-password"
-              className="mt-2 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100"
+              className="mt-2 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100 outline-none transition focus:border-cyan-500/70"
               onChange={(event) =>
                 setLoginPassword(event.target.value)
               }
@@ -623,7 +688,7 @@ export default function HomePage() {
           </label>
 
           <button
-            className="mt-6 w-full rounded-md border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-6 w-full rounded-md border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-50 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
             disabled={isAuthenticating}
             type="submit"
           >
@@ -636,8 +701,8 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-8">
-        <header className="flex flex-col gap-4 border-b border-zinc-800 pb-6 md:flex-row md:items-end md:justify-between">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-7 px-4 py-6 sm:px-6 lg:px-8">
+        <header className="flex flex-col gap-4 border-b border-zinc-800 pb-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1 className="text-3xl font-bold">
               AI Ops Monitor
@@ -648,7 +713,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <span
               className={`rounded-md border px-2 py-1 text-xs font-medium ${
                 socketStatus === "connected"
@@ -672,7 +737,7 @@ export default function HomePage() {
             ) : null}
 
             <button
-              className="rounded-md border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-md border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-50 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={isChecking}
               onClick={handleMonitoringCheck}
               type="button"
@@ -681,7 +746,7 @@ export default function HomePage() {
             </button>
 
             <button
-              className="rounded-md border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-zinc-800"
+              className="rounded-md border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-900"
               onClick={handleLogout}
               type="button"
             >
@@ -697,26 +762,26 @@ export default function HomePage() {
         ) : null}
 
         <section className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
+          <Panel className="p-4">
             <p className="text-sm text-zinc-400">Services</p>
             <p className="mt-2 text-3xl font-semibold">
               {services.length}
             </p>
-          </div>
+          </Panel>
 
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
+          <Panel className="p-4">
             <p className="text-sm text-zinc-400">Healthy</p>
             <p className="mt-2 text-3xl font-semibold text-emerald-400">
               {healthyServices.length}
             </p>
-          </div>
+          </Panel>
 
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
+          <Panel className="p-4">
             <p className="text-sm text-zinc-400">Open incidents</p>
             <p className="mt-2 text-3xl font-semibold text-red-300">
               {openIncidents.length}
             </p>
-          </div>
+          </Panel>
         </section>
 
         <section>
@@ -725,16 +790,22 @@ export default function HomePage() {
           </div>
 
           {isLoading ? (
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-5 text-zinc-400">
-              Loading services...
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {[0, 1, 2].map((item) => (
+                <Panel className="p-5" key={item}>
+                  <SkeletonBlock className="h-5 w-32" />
+                  <SkeletonBlock className="mt-3 h-4 w-full" />
+                  <SkeletonBlock className="mt-2 h-4 w-2/3" />
+                </Panel>
+              ))}
             </div>
           ) : services.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {services.map((service) => (
                 <button
-                  className={`rounded-lg border bg-zinc-900 p-5 text-left transition hover:border-zinc-600 ${
+                  className={`rounded-lg border bg-zinc-900/90 p-5 text-left shadow-sm shadow-black/20 transition hover:-translate-y-0.5 hover:border-zinc-600 ${
                     service.id === activeServiceId
-                      ? "border-zinc-500"
+                      ? "border-cyan-500/60"
                       : "border-zinc-800"
                   }`}
                   key={service.id}
@@ -761,9 +832,10 @@ export default function HomePage() {
               ))}
             </div>
           ) : (
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-5 text-zinc-400">
-              No services registered yet.
-            </div>
+            <EmptyState
+              detail="Add a service through the API, then use Run check to collect metrics."
+              title="No services registered yet."
+            />
           )}
         </section>
 
@@ -802,13 +874,11 @@ export default function HomePage() {
           ) : null}
 
           <div className="grid gap-4 xl:grid-cols-2">
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-5">
+            <Panel className="p-5">
               <h3 className="font-semibold">Response time</h3>
               <div className="mt-4 h-72">
                 {isMetricsLoading ? (
-                  <div className="flex h-full items-center text-sm text-zinc-500">
-                    Loading response time...
-                  </div>
+                  <MetricSkeleton />
                 ) : responseTimeData.length > 0 ? (
                   <ResponsiveContainer height="100%" width="100%">
                     <LineChart data={responseTimeData}>
@@ -845,20 +915,18 @@ export default function HomePage() {
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex h-full items-center text-sm text-zinc-500">
+                  <div className="flex h-full items-center justify-center rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 p-6 text-center text-sm text-zinc-500">
                     No response time metrics yet.
                   </div>
                 )}
               </div>
-            </div>
+            </Panel>
 
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-5">
+            <Panel className="p-5">
               <h3 className="font-semibold">Availability</h3>
               <div className="mt-4 h-72">
                 {isMetricsLoading ? (
-                  <div className="flex h-full items-center text-sm text-zinc-500">
-                    Loading availability...
-                  </div>
+                  <MetricSkeleton />
                 ) : availabilityData.length > 0 ? (
                   <ResponsiveContainer height="100%" width="100%">
                     <LineChart data={availabilityData}>
@@ -896,12 +964,12 @@ export default function HomePage() {
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex h-full items-center text-sm text-zinc-500">
+                  <div className="flex h-full items-center justify-center rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 p-6 text-center text-sm text-zinc-500">
                     No availability metrics yet.
                   </div>
                 )}
               </div>
-            </div>
+            </Panel>
           </div>
         </section>
 
@@ -915,11 +983,11 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid gap-4 rounded-lg border border-zinc-800 bg-zinc-900 p-5 md:grid-cols-[1fr_1fr_auto] md:items-end">
+          <Panel className="grid gap-4 p-5 md:grid-cols-[1fr_1fr_auto] md:items-end">
             <label className="text-sm text-zinc-300">
               Warning latency
               <input
-                className="mt-2 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100"
+                className="mt-2 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100 outline-none transition focus:border-cyan-500/70"
                 min="1"
                 onChange={(event) =>
                   setWarningThreshold(event.target.value)
@@ -932,7 +1000,7 @@ export default function HomePage() {
             <label className="text-sm text-zinc-300">
               Critical latency
               <input
-                className="mt-2 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100"
+                className="mt-2 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100 outline-none transition focus:border-cyan-500/70"
                 min="1"
                 onChange={(event) =>
                   setCriticalThreshold(event.target.value)
@@ -955,7 +1023,7 @@ export default function HomePage() {
               </label>
 
               <button
-                className="rounded-md border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-md border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={
                   !activeServiceId ||
                   !alertRule ||
@@ -967,7 +1035,7 @@ export default function HomePage() {
                 {isSavingAlertRule ? "Saving..." : "Save"}
               </button>
             </div>
-          </div>
+          </Panel>
         </section>
 
         <section>
@@ -980,7 +1048,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="max-h-96 overflow-auto rounded-lg border border-zinc-800 bg-zinc-950">
+          <div className="max-h-96 overflow-auto rounded-lg border border-zinc-800 bg-zinc-950/90">
             {logs.length > 0 ? (
               logs.map((log) => (
                 <div
@@ -997,9 +1065,10 @@ export default function HomePage() {
                 </div>
               ))
             ) : (
-              <div className="p-5 text-sm text-zinc-500">
-                No logs streamed yet.
-              </div>
+              <EmptyState
+                detail="Logs appear after a monitoring check or incident action."
+                title="No logs streamed yet."
+              />
             )}
           </div>
         </section>
@@ -1009,9 +1078,11 @@ export default function HomePage() {
 
           <div className="mt-4 space-y-3">
             {isLoading ? (
-              <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-5 text-zinc-400">
-                Loading incidents...
-              </div>
+              <Panel className="p-5">
+                <SkeletonBlock className="h-5 w-40" />
+                <SkeletonBlock className="mt-3 h-4 w-full" />
+                <SkeletonBlock className="mt-2 h-4 w-2/3" />
+              </Panel>
             ) : incidents.length > 0 ? (
               incidents.map((incident) => (
                 <article
@@ -1121,9 +1192,10 @@ export default function HomePage() {
                 </article>
               ))
             ) : (
-              <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-5 text-zinc-400">
-                No incidents detected.
-              </div>
+              <EmptyState
+                detail="When a service fails or exceeds thresholds, incidents will appear here."
+                title="No incidents detected."
+              />
             )}
           </div>
         </section>
