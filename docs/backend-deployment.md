@@ -1,11 +1,15 @@
 # Backend Deployment
 
-This step prepares the backend for a production deploy on Render with
-Neon Postgres and Upstash Redis.
+This document describes the paid/production-style backend deploy on
+Render with Neon Postgres and Upstash Redis.
+
+For a zero-cost deployment, use `docs/free-deployment.md` instead.
+The free path deploys only the backend API web service and skips the
+always-on Celery worker and beat scheduler.
 
 ## Services
 
-The root `render.yaml` defines three Docker services:
+The paid production-style setup uses three Docker services:
 
 - `ai-ops-monitor-api`: public FastAPI web service
 - `ai-ops-monitor-worker`: Celery worker
