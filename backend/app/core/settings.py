@@ -62,6 +62,28 @@ class Settings(BaseSettings):
 
         return value
 
+    @field_validator("DATABASE_URL")
+    @classmethod
+    def normalize_database_url(cls, value: str) -> str:
+        if value.startswith("postgresql+asyncpg://"):
+            return value
+
+        if value.startswith("postgresql://"):
+            return value.replace(
+                "postgresql://",
+                "postgresql+asyncpg://",
+                1,
+            )
+
+        if value.startswith("postgres://"):
+            return value.replace(
+                "postgres://",
+                "postgresql+asyncpg://",
+                1,
+            )
+
+        return value
+
     @model_validator(mode="after")
     def validate_deployment_settings(self):
         if self.APP_ENV != "production":

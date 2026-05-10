@@ -6,19 +6,13 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
-from dotenv import load_dotenv
-import os
-
+from app.core.settings import settings
 from app.db.session import Base
-from app.db.models import Service
-
-load_dotenv()
+from app.db import models  # noqa: F401
 
 config = context.config
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-config.set_main_option("sqlalchemy.url", DATABASE_URL)
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -28,7 +22,7 @@ target_metadata = Base.metadata
 
 def run_migrations_offline():
     context.configure(
-        url=DATABASE_URL,
+        url=settings.DATABASE_URL,
         target_metadata=target_metadata,
         literal_binds=True,
     )
