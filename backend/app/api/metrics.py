@@ -27,9 +27,11 @@ router = APIRouter(
 )
 async def get_metrics_for_service(
     service_id: int,
+    limit: int = 200,
     db: AsyncSession = Depends(get_db),
 ):
     return await get_service_metrics(
         db,
         service_id,
+        limit=min(limit, 500),
     )

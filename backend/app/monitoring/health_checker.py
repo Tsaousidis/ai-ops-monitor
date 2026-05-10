@@ -20,7 +20,7 @@ async def check_service_health(
             ) * 1000
 
             return {
-                "success": True,
+                "success": response.is_success,
                 "status_code": response.status_code,
                 "response_time": round(
                     response_time,

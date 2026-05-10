@@ -18,9 +18,7 @@ async def create_metric(
 
     db.add(metric)
 
-    await db.commit()
-
-    await db.refresh(metric)
+    await db.flush()
 
     return metric
 
@@ -28,11 +26,13 @@ async def create_metric(
 async def get_service_metrics(
     db: AsyncSession,
     service_id: int,
+    limit: int = 200,
 ):
     result = await db.execute(
         select(Metric)
         .where(Metric.service_id == service_id)
         .order_by(Metric.timestamp.desc())
+        .limit(limit)
     )
 
     return result.scalars().all()

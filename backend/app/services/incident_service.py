@@ -37,9 +37,7 @@ async def create_incident(
 
     db.add(incident)
 
-    await db.commit()
-
-    await db.refresh(incident)
+    await db.flush()
 
     return incident
 
