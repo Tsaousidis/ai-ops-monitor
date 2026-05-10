@@ -15,6 +15,7 @@ When `APP_ENV=production`, the backend refuses to start if:
 
 - `DEBUG=true`
 - `SECRET_KEY` is missing or shorter than 32 characters
+- `ADMIN_PASSWORD` is missing or shorter than 12 characters
 - `CORS_ORIGINS` contains `localhost` or `127.0.0.1`
 
 ## Secrets Strategy
@@ -33,12 +34,23 @@ Store real values in the target platform secret manager:
 - Upstash connection string for Redis
 - Vercel environment variables for public frontend URLs
 
+Local `.env` files are ignored by git and are only for your machine:
+
+- `.env`: Docker Compose local stack
+- `backend/.env`: backend-only local development
+- `frontend/.env`: frontend-only local development
+
+Committed example files are templates only and must not contain real
+production secrets.
+
 ## Required Backend Variables
 
 - `APP_ENV`
 - `DATABASE_URL`
 - `REDIS_URL`
 - `SECRET_KEY`
+- `ADMIN_USERNAME`
+- `ADMIN_PASSWORD`
 - `CORS_ORIGINS`
 
 ## Optional Backend Variables
@@ -49,6 +61,7 @@ Store real values in the target platform secret manager:
 - `CELERY_RESULT_BACKEND`
 - `MONITORING_INTERVAL_SECONDS`
 - `LOG_SQL`
+- `ACCESS_TOKEN_EXPIRE_MINUTES`
 
 ## Frontend Variables
 

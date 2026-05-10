@@ -1,5 +1,6 @@
 "use client";
 
+import type { FormEvent } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
@@ -11,9 +12,15 @@ import {
   YAxis,
 } from "recharts";
 
-import { getWebSocketUrl } from "@/src/lib/api";
+import {
+  clearAuthToken,
+  getAuthToken,
+  getWebSocketUrl,
+  setAuthToken,
+} from "@/src/lib/api";
 import {
   escalateIncident,
+  fetchCurrentUser,
   fetchIncidents,
   fetchIncidentInsights,
   fetchLogs,
@@ -21,6 +28,7 @@ import {
   fetchServiceMetrics,
   fetchServices,
   generateIncidentInsight,
+  login as loginRequest,
   reopenIncident,
   resolveIncident,
   runMonitoringCheck,
@@ -29,6 +37,7 @@ import {
 import type {
   AIInsight,
   AlertRule,
+  CurrentUser,
   Incident,
   LogEntry,
   Metric,
@@ -117,6 +126,16 @@ function buildMetricSeries(
 }
 
 export default function HomePage() {
+  const [authToken, setAuthTokenState] = useState<string | null>(
+    null,
+  );
+  const [authChecked, setAuthChecked] = useState(false);
+  const [currentUser, setCurrentUser] =
+    useState<CurrentUser | null>(null);
+  const [loginUsername, setLoginUsername] = useState("admin");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [insights, setInsights] = useState<
@@ -264,12 +283,44 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadDashboardData();
-  }, [loadDashboardData]);
+    async function restoreSession() {
+      const storedToken = getAuthToken();
+
+      if (!storedToken) {
+        setAuthChecked(true);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const user = await fetchCurrentUser();
+
+        setAuthTokenState(storedToken);
+        setCurrentUser(user);
+      } catch {
+        clearAuthToken();
+        setAuthTokenState(null);
+        setCurrentUser(null);
+        setIsLoading(false);
+      } finally {
+        setAuthChecked(true);
+      }
+    }
+
+    void restoreSession();
+  }, []);
 
   useEffect(() => {
-    if (!activeServiceId) {
+    if (!authToken) {
+      return;
+    }
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadDashboardData();
+  }, [authToken, loadDashboardData]);
+
+  useEffect(() => {
+    if (!authToken || !activeServiceId) {
       return;
     }
 
@@ -277,10 +328,20 @@ export default function HomePage() {
     void loadMetrics(activeServiceId);
     void loadLogs(activeServiceId);
     void loadAlertRule(activeServiceId);
-  }, [activeServiceId, loadAlertRule, loadLogs, loadMetrics]);
+  }, [
+    activeServiceId,
+    authToken,
+    loadAlertRule,
+    loadLogs,
+    loadMetrics,
+  ]);
 
   useEffect(() => {
-    const socket = new WebSocket(getWebSocketUrl());
+    if (!authToken) {
+      return;
+    }
+
+    const socket = new WebSocket(getWebSocketUrl(authToken));
 
     socket.onopen = () => {
       setSocketStatus("connected");
@@ -348,7 +409,54 @@ export default function HomePage() {
     return () => {
       socket.close();
     };
-  }, [activeServiceId, loadDashboardData, loadMetrics]);
+  }, [activeServiceId, authToken, loadDashboardData, loadMetrics]);
+
+  async function handleLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsAuthenticating(true);
+    setLoginError(null);
+
+    try {
+      const tokenResponse = await loginRequest(
+        loginUsername,
+        loginPassword,
+      );
+
+      setAuthToken(tokenResponse.access_token);
+
+      const user = await fetchCurrentUser();
+
+      setAuthTokenState(tokenResponse.access_token);
+      setCurrentUser(user);
+      setIsLoading(true);
+      await loadDashboardData();
+    } catch (requestError) {
+      clearAuthToken();
+      setAuthTokenState(null);
+      setCurrentUser(null);
+      setLoginError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to sign in",
+      );
+    } finally {
+      setIsAuthenticating(false);
+    }
+  }
+
+  function handleLogout() {
+    clearAuthToken();
+    setAuthTokenState(null);
+    setCurrentUser(null);
+    setServices([]);
+    setIncidents([]);
+    setInsights({});
+    setLogs([]);
+    setMetrics([]);
+    setAlertRule(null);
+    setSelectedServiceId(null);
+    setIsLoading(false);
+  }
 
   async function handleMonitoringCheck() {
     setIsChecking(true);
@@ -461,6 +569,71 @@ export default function HomePage() {
     }
   }
 
+  if (!authChecked) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-zinc-950 text-white">
+        <p className="text-sm text-zinc-400">Checking session...</p>
+      </main>
+    );
+  }
+
+  if (!authToken) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-6 text-white">
+        <form
+          className="w-full max-w-sm rounded-lg border border-zinc-800 bg-zinc-900 p-6"
+          onSubmit={handleLogin}
+        >
+          <div>
+            <h1 className="text-2xl font-semibold">AI Ops Monitor</h1>
+            <p className="mt-1 text-sm text-zinc-400">
+              Admin access required
+            </p>
+          </div>
+
+          {loginError ? (
+            <div className="mt-5 rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">
+              {loginError}
+            </div>
+          ) : null}
+
+          <label className="mt-5 block text-sm text-zinc-300">
+            Username
+            <input
+              autoComplete="username"
+              className="mt-2 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100"
+              onChange={(event) =>
+                setLoginUsername(event.target.value)
+              }
+              value={loginUsername}
+            />
+          </label>
+
+          <label className="mt-4 block text-sm text-zinc-300">
+            Password
+            <input
+              autoComplete="current-password"
+              className="mt-2 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100"
+              onChange={(event) =>
+                setLoginPassword(event.target.value)
+              }
+              type="password"
+              value={loginPassword}
+            />
+          </label>
+
+          <button
+            className="mt-6 w-full rounded-md border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isAuthenticating}
+            type="submit"
+          >
+            {isAuthenticating ? "Signing in..." : "Sign in"}
+          </button>
+        </form>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-8">
@@ -492,6 +665,12 @@ export default function HomePage() {
               </p>
             ) : null}
 
+            {currentUser ? (
+              <span className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs font-medium text-zinc-300">
+                {currentUser.username}
+              </span>
+            ) : null}
+
             <button
               className="rounded-md border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={isChecking}
@@ -499,6 +678,14 @@ export default function HomePage() {
               type="button"
             >
               {isChecking ? "Checking..." : "Run check"}
+            </button>
+
+            <button
+              className="rounded-md border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-zinc-800"
+              onClick={handleLogout}
+              type="button"
+            >
+              Sign out
             </button>
           </div>
         </header>

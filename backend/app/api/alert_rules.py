@@ -4,6 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db
+from app.api.dependencies import get_current_admin
 from app.schemas.alert_rule import AlertRuleResponse
 from app.schemas.alert_rule import AlertRuleUpdate
 from app.services.alert_rule_service import get_alert_rules
@@ -18,6 +19,7 @@ from app.services.service_service import get_service_by_id
 router = APIRouter(
     prefix="/alert-rules",
     tags=["Alert Rules"],
+    dependencies=[Depends(get_current_admin)],
 )
 
 

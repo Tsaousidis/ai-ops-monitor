@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db
+from app.api.dependencies import get_current_admin
 
 from app.schemas.service import (
     ServiceCreate,
@@ -20,6 +21,7 @@ from app.services.service_service import (
 router = APIRouter(
     prefix="/services",
     tags=["Services"],
+    dependencies=[Depends(get_current_admin)],
 )
 
 

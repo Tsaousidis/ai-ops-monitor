@@ -29,6 +29,12 @@ class Settings(BaseSettings):
         ge=10,
     )
     SECRET_KEY: str | None = None
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
+        default=720,
+        ge=5,
+    )
+    ADMIN_USERNAME: str = "admin"
+    ADMIN_PASSWORD: str | None = None
     CORS_ORIGINS: str = (
         "http://localhost:3000,"
         "http://127.0.0.1:3000"
@@ -46,6 +52,7 @@ class Settings(BaseSettings):
         "CELERY_BROKER_URL",
         "CELERY_RESULT_BACKEND",
         "SECRET_KEY",
+        "ADMIN_PASSWORD",
         mode="before",
     )
     @classmethod
@@ -58,6 +65,11 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_deployment_settings(self):
         if self.APP_ENV != "production":
+            if not self.SECRET_KEY:
+                self.SECRET_KEY = (
+                    "local-dev-secret-change-me-32-chars"
+                )
+
             return self
 
         if self.DEBUG:
@@ -68,6 +80,12 @@ class Settings(BaseSettings):
         if not self.SECRET_KEY or len(self.SECRET_KEY) < 32:
             raise ValueError(
                 "SECRET_KEY must be at least 32 characters "
+                "when APP_ENV=production"
+            )
+
+        if not self.ADMIN_PASSWORD or len(self.ADMIN_PASSWORD) < 12:
+            raise ValueError(
+                "ADMIN_PASSWORD must be at least 12 characters "
                 "when APP_ENV=production"
             )
 

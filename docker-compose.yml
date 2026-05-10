@@ -47,6 +47,9 @@ services:
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
       MONITORING_INTERVAL_SECONDS: ${MONITORING_INTERVAL_SECONDS:-60}
       SECRET_KEY: ${SECRET_KEY:-local-dev-secret-change-me-32-chars}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-720}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
     command: >
       sh -c "alembic upgrade head &&
@@ -76,6 +79,9 @@ services:
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
       MONITORING_INTERVAL_SECONDS: ${MONITORING_INTERVAL_SECONDS:-60}
       SECRET_KEY: ${SECRET_KEY:-local-dev-secret-change-me-32-chars}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-720}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
     command: >
       celery -A app.workers.celery_app.celery_app worker
@@ -109,6 +115,9 @@ services:
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
       MONITORING_INTERVAL_SECONDS: ${MONITORING_INTERVAL_SECONDS:-60}
       SECRET_KEY: ${SECRET_KEY:-local-dev-secret-change-me-32-chars}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-720}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
     command: celery -A app.workers.celery_app.celery_app beat --loglevel=info
     depends_on:

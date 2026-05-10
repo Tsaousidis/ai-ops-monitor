@@ -3,12 +3,14 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db
+from app.api.dependencies import get_current_admin
 from app.schemas.log import LogResponse
 from app.services.log_service import get_logs
 
 router = APIRouter(
     prefix="/logs",
     tags=["Logs"],
+    dependencies=[Depends(get_current_admin)],
 )
 
 

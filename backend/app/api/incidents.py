@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db
+from app.api.dependencies import get_current_admin
 
 from app.schemas.ai_insight import (
     AIInsightResponse,
@@ -32,6 +33,7 @@ from app.websocket.websocket_manager import manager
 router = APIRouter(
     prefix="/incidents",
     tags=["Incidents"],
+    dependencies=[Depends(get_current_admin)],
 )
 
 

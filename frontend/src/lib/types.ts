@@ -83,3 +83,13 @@ export type WebSocketEvent =
       event: "log_update";
       data: LogEntry;
     };
+
+export type LoginResponse = {
+  access_token: string;
+  token_type: "bearer";
+};
+
+export type CurrentUser = {
+  username: string;
+  role: "admin" | string;
+};

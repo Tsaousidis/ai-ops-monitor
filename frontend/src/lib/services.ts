@@ -2,12 +2,31 @@ import { apiRequest } from "./api";
 import type {
   AIInsight,
   AlertRule,
+  CurrentUser,
   Incident,
+  LoginResponse,
   LogEntry,
   Metric,
   MonitoringResult,
   Service,
 } from "./types";
+
+export async function login(
+  username: string,
+  password: string,
+) {
+  return apiRequest<LoginResponse>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({
+      username,
+      password,
+    }),
+  });
+}
+
+export async function fetchCurrentUser() {
+  return apiRequest<CurrentUser>("/auth/me");
+}
 
 export async function fetchServices() {
   return apiRequest<Service[]>("/services/");

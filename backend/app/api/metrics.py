@@ -4,6 +4,7 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db
+from app.api.dependencies import get_current_admin
 
 from app.schemas.metric import (
     MetricResponse,
@@ -16,6 +17,7 @@ from app.services.metric_service import (
 router = APIRouter(
     prefix="/metrics",
     tags=["Metrics"],
+    dependencies=[Depends(get_current_admin)],
 )
 
 
