@@ -79,6 +79,8 @@ services:
         condition: service_healthy
       backend:
         condition: service_started
+    healthcheck:
+      disable: true
     restart: unless-stopped
 
   beat:
@@ -101,6 +103,8 @@ services:
         condition: service_healthy
       backend:
         condition: service_started
+    healthcheck:
+      disable: true
     restart: unless-stopped
 
   frontend:
