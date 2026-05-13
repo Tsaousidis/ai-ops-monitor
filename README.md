@@ -16,13 +16,22 @@ The project is built as a portfolio-grade full-stack system:
 
 ## Screenshot
 
-Add a dashboard screenshot here after running the local Docker stack.
+Add a dashboard screenshot here after running the local Docker stack and
+seeding demo data.
 
 ![AI Ops Monitor dashboard](docs/images/dashboard.png)
 
 Recommended screenshot: the authenticated dashboard after adding one or
 two services and running a monitoring check, with metric charts, service
 cards, live logs, and the incidents area visible.
+
+To generate screenshot-ready local demo data:
+
+```powershell
+docker compose exec backend python scripts/seed_demo.py
+```
+
+Then refresh `http://localhost:3000` and capture the dashboard.
 
 ## Architecture
 
