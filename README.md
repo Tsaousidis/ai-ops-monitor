@@ -14,6 +14,16 @@ The project is built as a portfolio-grade full-stack system:
 - WebSocket updates for live service/log/incident events
 - Docker Compose local production simulation
 
+## Screenshot
+
+Add a dashboard screenshot here after running the local Docker stack.
+
+![AI Ops Monitor dashboard](docs/images/dashboard.png)
+
+Recommended screenshot: the authenticated dashboard after adding one or
+two services and running a monitoring check, with metric charts, service
+cards, live logs, and the incidents area visible.
+
 ## Architecture
 
 ```text

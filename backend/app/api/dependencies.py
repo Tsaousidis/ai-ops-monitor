@@ -1,3 +1,4 @@
+from fastapi import Depends
 from fastapi import HTTPException
 from fastapi import status
 from fastapi.security import HTTPAuthorizationCredentials
@@ -16,7 +17,9 @@ async def get_db():
 
 
 async def get_current_admin(
-    credentials: HTTPAuthorizationCredentials = bearer_scheme,
+    credentials: HTTPAuthorizationCredentials = Depends(
+        bearer_scheme
+    ),
 ) -> CurrentUserResponse:
     payload = verify_access_token(credentials.credentials)
     username = payload.get("sub")

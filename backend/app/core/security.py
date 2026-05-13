@@ -124,12 +124,12 @@ def verify_admin_credentials(
         return False
 
     username_matches = hmac.compare_digest(
-        username,
-        settings.ADMIN_USERNAME,
+        username.encode("utf-8"),
+        settings.ADMIN_USERNAME.encode("utf-8"),
     )
     password_matches = hmac.compare_digest(
-        password,
-        expected_password,
+        password.encode("utf-8"),
+        expected_password.encode("utf-8"),
     )
 
     return username_matches and password_matches
